@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Image, ActivityIndicator, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import * as MailComposer from 'expo-mail-composer';
 import { colors, spacing, radius } from '../../../src/theme';
 import { GradientButton } from '../../../src/components/GradientButton';
 import { CategoryChip } from '../../../src/components/CategoryChip';
-import { getReportPreview, sendReport } from '../../../src/services/report.service';
+import { getReportPreview, downloadReportPdf } from '../../../src/services/report.service';
 import { ReportPreview } from '../../../src/types';
 
 const logo = require('../../../assets/logo.png');
@@ -20,7 +23,6 @@ export default function ReportScreen() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => {
     if (!projectId) return;
@@ -40,11 +42,40 @@ export default function ReportScreen() {
     setSending(true);
     setError('');
     try {
-      const res = await sendReport(projectId);
-      setSent(true);
-      setSuccessMsg(res?.message ?? 'Report sent successfully!');
+      // Download PDF from backend
+      const base64Pdf = await downloadReportPdf(projectId);
+      const filename = `Expense_Report_${(report?.projectName ?? 'Project').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      const fileUri = `${FileSystem.cacheDirectory}${filename}`;
+
+      // Save to local cache
+      await FileSystem.writeAsStringAsync(fileUri, base64Pdf, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // Try to open with Mail app first
+      const isMailAvailable = await MailComposer.isAvailableAsync();
+      if (isMailAvailable) {
+        await MailComposer.composeAsync({
+          subject: `E4A Solutions - Expense Report: ${report?.projectName ?? ''}`,
+          body: `Please find attached the expense report for project: ${report?.projectName ?? ''}.\n\nProject Number: ${report?.projectNumber ?? ''}\nTotal Amount: ${formatCurrency(report?.totalAmount ?? 0)}\n\nE4A Solutions`,
+          attachments: [fileUri],
+        });
+        setSent(true);
+      } else {
+        // Fallback: share the PDF
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(fileUri, {
+            mimeType: 'application/pdf',
+            dialogTitle: 'Share Expense Report',
+          });
+          setSent(true);
+        } else {
+          setError('No email or sharing app available on this device');
+        }
+      }
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to send report';
+      const msg = (e as { message?: string })?.message ?? 'Failed to generate report';
       setError(msg);
     } finally {
       setSending(false);
@@ -72,8 +103,8 @@ export default function ReportScreen() {
         {sent ? (
           <View style={styles.successCard}>
             <Ionicons name="checkmark-circle" size={64} color={colors.success} />
-            <Text style={styles.successTitle}>Report Sent!</Text>
-            <Text style={styles.successMsg}>{successMsg}</Text>
+            <Text style={styles.successTitle}>Report Ready!</Text>
+            <Text style={styles.successMsg}>The PDF was opened in your email app ready to send.</Text>
             <GradientButton title="Done" onPress={() => router.back()} style={{ marginTop: spacing.lg, width: '100%' }} />
           </View>
         ) : (
@@ -122,10 +153,15 @@ export default function ReportScreen() {
             </View>
             <View style={styles.recipientRow}>
               <Ionicons name="mail-outline" size={16} color={colors.textCaption} />
-              <Text style={styles.recipientText}>Report will be sent to asantoro@e4asolutions.com</Text>
+              <Text style={styles.recipientText}>Se abrirá tu app de email con el PDF adjunto</Text>
             </View>
             {error ? <Text style={styles.error}>{error}</Text> : null}
-            <GradientButton title={sending ? 'Sending...' : 'Generate & Send Report'} onPress={handleSendReport} loading={sending} style={{ marginTop: spacing.md }} />
+            <GradientButton
+              title={sending ? 'Generating PDF...' : 'Generate & Send Report'}
+              onPress={handleSendReport}
+              loading={sending}
+              style={{ marginTop: spacing.md }}
+            />
           </>
         )}
       </ScrollView>
