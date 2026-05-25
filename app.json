@@ -1,14 +1,14 @@
 {
   "expo": {
     "name": "E4A Expenses",
-    "slug": "abacusai-mobile-apps",
+    "slug": "e4a-expense-tracker",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.abacusai.e4aexpensetrack.t1779573277",
+      "bundleIdentifier": "com.mikes5817.e4aexpenses",
       "buildNumber": "1"
     },
     "android": {
@@ -19,7 +19,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.abacusai.e4aexpensetrack.t1779573277",
+      "package": "com.mikes5817.e4aexpenses",
       "versionCode": 1,
       "intentFilters": [
         {
@@ -45,13 +45,11 @@
     "plugins": [
       "expo-router"
     ],
-    "scheme": "abacusai1779573277",
+    "scheme": "e4aexpenses",
     "extra": {
       "router": {},
-      "eas": {
-        "projectId": "a52132e3-7b24-4c1b-9315-46625e580b8a"
-      }
+      "eas": {}
     },
-    "owner": "abacus.ai"
+    "owner": "mikes5817"
   }
 }
