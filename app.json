@@ -48,7 +48,9 @@
     "scheme": "e4aexpenses",
     "extra": {
       "router": {},
-      "eas": {}
+      "eas": {
+        "projectId": "88b72bfb-ecde-4347-b04e-7933922a8fea"
+      }
     },
     "owner": "mikes5817"
   }
