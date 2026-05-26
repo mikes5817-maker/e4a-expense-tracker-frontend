@@ -61,16 +61,14 @@ export default function AddExpenseScreen() {
     setFileUri(uri);
     setFileName(name);
     setFileType(type);
+    setFileId(undefined);
     try {
       const presigned = await getPresignedUrl(name, type);
       await uploadFileToS3(presigned?.uploadUrl ?? '', uri, type, setUploadProgress);
       const completed = await completeUpload(presigned?.cloud_storage_path ?? '', name, type);
       setFileId(completed?.id ?? undefined);
     } catch {
-      setError('Failed to upload file');
-      setFileUri('');
-      setFileName('');
-      setFileType('');
+      setError('Receipt photo saved locally but could not upload to cloud. Expense will be saved without receipt.');
     } finally {
       setUploading(false);
     }
@@ -198,7 +196,7 @@ export default function AddExpenseScreen() {
               </View>
             )}
           </View>
-          <GradientButton title="Save Expense" onPress={handleSave} loading={loading} disabled={uploading} style={{ marginTop: spacing.lg }} />
+          <GradientButton title="Save Expense" onPress={handleSave} loading={loading} style={{ marginTop: spacing.lg }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
