@@ -11,6 +11,7 @@ import * as Sharing from 'expo-sharing';
 import * as MailComposer from 'expo-mail-composer';
 import { colors, spacing, radius } from '../../src/theme';
 import { GradientButton } from '../../src/components/GradientButton';
+import { TimePicker } from '../../src/components/TimePicker';
 import { createTimeReport, downloadTimeReportPdf } from '../../src/services/time-report.service';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -24,65 +25,34 @@ function getMondayOf(date: Date): Date {
   return d;
 }
 
-function formatTime(mins: number | null): string {
-  if (mins === null) return '';
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  const ampm = h < 12 ? 'AM' : 'PM';
-  const hh = h === 0 ? 12 : h > 12 ? h - 12 : h;
-  return `${hh}:${m.toString().padStart(2, '0')} ${ampm}`;
-}
-
-function parseTimeInput(val: string): number | null {
-  const clean = val.trim().toUpperCase();
-  const match = clean.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?$/);
-  if (!match) return null;
-  let h = parseInt(match[1]);
-  const m = match[2] ? parseInt(match[2]) : 0;
-  const ampm = match[3];
-  if (ampm === 'PM' && h < 12) h += 12;
-  if (ampm === 'AM' && h === 12) h = 0;
-  return h * 60 + m;
-}
-
 function calcHours(inMins: number | null, outMins: number | null): number {
   if (inMins === null || outMins === null) return 0;
   const diff = outMins - inMins;
   return diff > 0 ? Math.round(diff * 100 / 60) / 100 : 0;
 }
 
-type Shift = { projectId: string; timeIn: string; timeOut: string; shiftNum: number };
+type Shift = { projectId: string; timeIn: number | null; timeOut: number | null; shiftNum: number };
 type Day = { dayName: string; date: Date; perDiem: boolean; shifts: Shift[] };
 type Employee = { name: string; employeeId: string; days: Day[] };
+
+function makeEmployee(weekStart: Date): Employee {
+  return {
+    name: '', employeeId: '', days: DAYS.map((d, i) => {
+      const date = new Date(weekStart);
+      date.setDate(date.getDate() + i);
+      return { dayName: d, date, perDiem: false, shifts: [{ projectId: '', timeIn: null, timeOut: null, shiftNum: 1 }] };
+    })
+  };
+}
 
 export default function NewTimeReportScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [weekStart] = useState(() => getMondayOf(new Date()));
-  const [employees, setEmployees] = useState<Employee[]>([
-    { name: '', employeeId: '', days: DAYS.map((d, i) => {
-      const date = new Date(weekStart);
-      date.setDate(date.getDate() + i);
-      return { dayName: d, date, perDiem: false, shifts: [{ projectId: '', timeIn: '', timeOut: '', shiftNum: 1 }] };
-    })}
-  ]);
+  const [employees, setEmployees] = useState<Employee[]>([makeEmployee(getMondayOf(new Date()))]);
   const [saving, setSaving] = useState(false);
 
   const weekLabel = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(weekStart.getTime() + 6 * 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
-
-  const addEmployee = () => {
-    setEmployees(prev => [...prev, {
-      name: '', employeeId: '', days: DAYS.map((d, i) => {
-        const date = new Date(weekStart);
-        date.setDate(date.getDate() + i);
-        return { dayName: d, date, perDiem: false, shifts: [{ projectId: '', timeIn: '', timeOut: '', shiftNum: 1 }] };
-      })
-    }]);
-  };
-
-  const removeEmployee = (ei: number) => {
-    setEmployees(prev => prev.filter((_, i) => i !== ei));
-  };
 
   const updateEmp = (ei: number, field: 'name' | 'employeeId', val: string) => {
     setEmployees(prev => prev.map((e, i) => i === ei ? { ...e, [field]: val } : e));
@@ -94,7 +64,7 @@ export default function NewTimeReportScreen() {
     } : e));
   };
 
-  const updateShift = (ei: number, di: number, si: number, field: keyof Shift, val: string) => {
+  const updateShiftTime = (ei: number, di: number, si: number, field: 'timeIn' | 'timeOut', val: number | null) => {
     setEmployees(prev => prev.map((e, i) => i === ei ? {
       ...e, days: e.days.map((d, j) => j === di ? {
         ...d, shifts: d.shifts.map((s, k) => k === si ? { ...s, [field]: val } : s)
@@ -102,10 +72,26 @@ export default function NewTimeReportScreen() {
     } : e));
   };
 
+  const updateShiftProject = (ei: number, di: number, si: number, val: string) => {
+    setEmployees(prev => prev.map((e, i) => i === ei ? {
+      ...e, days: e.days.map((d, j) => j === di ? {
+        ...d, shifts: d.shifts.map((s, k) => k === si ? { ...s, projectId: val } : s)
+      } : d)
+    } : e));
+  };
+
   const addShift = (ei: number, di: number) => {
     setEmployees(prev => prev.map((e, i) => i === ei ? {
       ...e, days: e.days.map((d, j) => j === di ? {
-        ...d, shifts: [...d.shifts, { projectId: '', timeIn: '', timeOut: '', shiftNum: d.shifts.length + 1 }]
+        ...d, shifts: [...d.shifts, { projectId: '', timeIn: null, timeOut: null, shiftNum: d.shifts.length + 1 }]
+      } : d)
+    } : e));
+  };
+
+  const removeShift = (ei: number, di: number, si: number) => {
+    setEmployees(prev => prev.map((e, i) => i === ei ? {
+      ...e, days: e.days.map((d, j) => j === di ? {
+        ...d, shifts: d.shifts.filter((_, k) => k !== si).map((s, k) => ({ ...s, shiftNum: k + 1 }))
       } : d)
     } : e));
   };
@@ -128,8 +114,8 @@ export default function NewTimeReportScreen() {
             perDiem: d.perDiem,
             shifts: d.shifts.map(s => ({
               projectId: s.projectId || undefined,
-              timeIn: parseTimeInput(s.timeIn),
-              timeOut: parseTimeInput(s.timeOut),
+              timeIn: s.timeIn,
+              timeOut: s.timeOut,
               shiftNum: s.shiftNum,
             })),
           })),
@@ -155,7 +141,7 @@ export default function NewTimeReportScreen() {
       }
       router.replace('/tabs/time-reports');
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'Failed to save report');
+      Alert.alert('Error', e?.response?.data?.message ?? e?.message ?? 'Failed to save report');
     } finally {
       setSaving(false);
     }
@@ -182,7 +168,7 @@ export default function NewTimeReportScreen() {
             <View style={styles.empHeader}>
               <Text style={styles.empTitle}>Employee {ei + 1}</Text>
               {employees.length > 1 && (
-                <Pressable onPress={() => removeEmployee(ei)}>
+                <Pressable onPress={() => setEmployees(prev => prev.filter((_, i) => i !== ei))}>
                   <Ionicons name="trash-outline" size={18} color={colors.error} />
                 </Pressable>
               )}
@@ -199,7 +185,7 @@ export default function NewTimeReportScreen() {
                   placeholderTextColor={colors.textCaption}
                 />
               </View>
-              <View style={[styles.flex, { maxWidth: 120 }]}>
+              <View style={[styles.flex, { maxWidth: 110 }]}>
                 <Text style={styles.label}>Employee ID</Text>
                 <TextInput
                   style={styles.input}
@@ -211,76 +197,88 @@ export default function NewTimeReportScreen() {
               </View>
             </View>
 
-            {emp.days.map((day, di) => (
-              <View key={di} style={styles.daySection}>
-                <View style={styles.dayHeader}>
-                  <Text style={styles.dayName}>{day.dayName}</Text>
-                  <Text style={styles.dayDate}>{day.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</Text>
-                  <View style={styles.perDiemRow}>
-                    <Text style={styles.perDiemLabel}>Per Diem</Text>
-                    <Switch
-                      value={day.perDiem}
-                      onValueChange={v => togglePerDiem(ei, di, v)}
-                      trackColor={{ false: colors.border, true: colors.primary + '80' }}
-                      thumbColor={day.perDiem ? colors.primary : colors.textCaption}
-                    />
+            {emp.days.map((day, di) => {
+              const dayTotal = day.shifts.reduce((s, sh) => s + calcHours(sh.timeIn, sh.timeOut), 0);
+              return (
+                <View key={di} style={styles.daySection}>
+                  <View style={styles.dayHeader}>
+                    <View style={styles.dayNameBox}>
+                      <Text style={styles.dayName}>{day.dayName.slice(0, 3).toUpperCase()}</Text>
+                      <Text style={styles.dayDate}>{day.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</Text>
+                    </View>
+                    <View style={styles.perDiemRow}>
+                      <Text style={styles.perDiemLabel}>Per Diem</Text>
+                      <Switch
+                        value={day.perDiem}
+                        onValueChange={v => togglePerDiem(ei, di, v)}
+                        trackColor={{ false: colors.border, true: colors.primary + '80' }}
+                        thumbColor={day.perDiem ? colors.primary : '#ccc'}
+                        style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+                      />
+                    </View>
+                    {dayTotal > 0 && (
+                      <Text style={styles.dayTotal}>{dayTotal.toFixed(1)}h</Text>
+                    )}
                   </View>
+
+                  {day.shifts.map((shift, si) => (
+                    <View key={si} style={styles.shiftRow}>
+                      <View style={styles.timeBlock}>
+                        <Text style={styles.timeLabel}>In</Text>
+                        <TimePicker
+                          value={shift.timeIn}
+                          onChange={v => updateShiftTime(ei, di, si, 'timeIn', v)}
+                          placeholder="In"
+                        />
+                      </View>
+                      <Ionicons name="arrow-forward" size={14} color={colors.textCaption} style={{ marginTop: 18 }} />
+                      <View style={styles.timeBlock}>
+                        <Text style={styles.timeLabel}>Out</Text>
+                        <TimePicker
+                          value={shift.timeOut}
+                          onChange={v => updateShiftTime(ei, di, si, 'timeOut', v)}
+                          placeholder="Out"
+                        />
+                      </View>
+                      <View style={[styles.timeBlock, { maxWidth: 80 }]}>
+                        <Text style={styles.timeLabel}>Proj ID</Text>
+                        <TextInput
+                          style={[styles.input, { textAlign: 'center', fontSize: 12 }]}
+                          value={shift.projectId}
+                          onChangeText={v => updateShiftProject(ei, di, si, v)}
+                          placeholder="—"
+                          placeholderTextColor={colors.textCaption}
+                        />
+                      </View>
+                      {shift.timeIn !== null && shift.timeOut !== null && (
+                        <Text style={styles.hoursLabel}>{calcHours(shift.timeIn, shift.timeOut).toFixed(1)}h</Text>
+                      )}
+                      {day.shifts.length > 1 && (
+                        <Pressable onPress={() => removeShift(ei, di, si)} style={{ marginTop: 16 }}>
+                          <Ionicons name="close-circle" size={18} color={colors.error} />
+                        </Pressable>
+                      )}
+                    </View>
+                  ))}
+
+                  <Pressable style={styles.addShiftBtn} onPress={() => addShift(ei, di)}>
+                    <Ionicons name="add" size={14} color={colors.primary} />
+                    <Text style={styles.addShiftText}>Add shift</Text>
+                  </Pressable>
                 </View>
-
-                {day.shifts.map((shift, si) => (
-                  <View key={si} style={styles.shiftRow}>
-                    <Text style={styles.shiftNum}>#{si + 1}</Text>
-                    <View style={styles.flex}>
-                      <TextInput
-                        style={styles.timeInput}
-                        value={shift.timeIn}
-                        onChangeText={v => updateShift(ei, di, si, 'timeIn', v)}
-                        placeholder="In (e.g. 7AM)"
-                        placeholderTextColor={colors.textCaption}
-                      />
-                    </View>
-                    <Ionicons name="arrow-forward" size={14} color={colors.textCaption} />
-                    <View style={styles.flex}>
-                      <TextInput
-                        style={styles.timeInput}
-                        value={shift.timeOut}
-                        onChangeText={v => updateShift(ei, di, si, 'timeOut', v)}
-                        placeholder="Out (e.g. 4PM)"
-                        placeholderTextColor={colors.textCaption}
-                      />
-                    </View>
-                    <View style={[styles.flex, { maxWidth: 80 }]}>
-                      <TextInput
-                        style={styles.timeInput}
-                        value={shift.projectId}
-                        onChangeText={v => updateShift(ei, di, si, 'projectId', v)}
-                        placeholder="Proj ID"
-                        placeholderTextColor={colors.textCaption}
-                      />
-                    </View>
-                    <Text style={styles.hoursLabel}>
-                      {calcHours(parseTimeInput(shift.timeIn), parseTimeInput(shift.timeOut)).toFixed(1)}h
-                    </Text>
-                  </View>
-                ))}
-
-                <Pressable style={styles.addShiftBtn} onPress={() => addShift(ei, di)}>
-                  <Ionicons name="add" size={14} color={colors.primary} />
-                  <Text style={styles.addShiftText}>Add shift</Text>
-                </Pressable>
-              </View>
-            ))}
+              );
+            })}
           </View>
         ))}
 
-        <Pressable style={styles.addEmpBtn} onPress={addEmployee}>
+        <Pressable style={styles.addEmpBtn} onPress={() => setEmployees(prev => [...prev, makeEmployee(weekStart)])}>
           <Ionicons name="person-add-outline" size={18} color={colors.primary} />
           <Text style={styles.addEmpText}>Add Employee</Text>
         </Pressable>
 
         <View style={styles.recipientNote}>
           <Ionicons name="mail-outline" size={14} color={colors.textCaption} />
-          <Text style={styles.recipientText}>Will be sent to: rsilva@e4asolutions.com</Text>
+          <Text style={styles.recipientText}>PDF will open in your email app → rsilva@e4asolutions.com</Text>
         </View>
 
         <GradientButton
@@ -310,19 +308,21 @@ const styles = StyleSheet.create({
   label: { fontSize: 11, color: colors.textCaption, marginBottom: 4 },
   input: { backgroundColor: colors.background, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, padding: spacing.sm, fontSize: 14, color: colors.textDark },
   daySection: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm, marginTop: spacing.sm },
-  dayHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.xs },
-  dayName: { fontSize: 13, fontWeight: '600', color: colors.textDark, width: 80 },
-  dayDate: { fontSize: 12, color: colors.textCaption, flex: 1 },
-  perDiemRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dayHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.sm },
+  dayNameBox: { width: 52 },
+  dayName: { fontSize: 12, fontWeight: '700', color: colors.textDark },
+  dayDate: { fontSize: 10, color: colors.textCaption },
+  perDiemRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 },
   perDiemLabel: { fontSize: 11, color: colors.textCaption },
-  shiftRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
-  shiftNum: { fontSize: 11, color: colors.textCaption, width: 18 },
-  timeInput: { backgroundColor: colors.background, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, padding: 6, fontSize: 12, color: colors.textDark, textAlign: 'center' },
-  hoursLabel: { fontSize: 12, fontWeight: '600', color: colors.primary, width: 30, textAlign: 'right' },
+  dayTotal: { fontSize: 13, fontWeight: '700', color: colors.primary },
+  shiftRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, marginBottom: 8 },
+  timeBlock: { flex: 1 },
+  timeLabel: { fontSize: 10, color: colors.textCaption, marginBottom: 4 },
+  hoursLabel: { fontSize: 12, fontWeight: '700', color: colors.primary, paddingBottom: 10, minWidth: 28 },
   addShiftBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 },
   addShiftText: { fontSize: 12, color: colors.primary },
   addEmpBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center', backgroundColor: colors.primary + '10', borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md },
   addEmpText: { fontSize: 14, fontWeight: '600', color: colors.primary },
   recipientNote: { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center', marginBottom: spacing.sm },
-  recipientText: { fontSize: 12, color: colors.textCaption },
+  recipientText: { fontSize: 12, color: colors.textCaption, textAlign: 'center', flex: 1 },
 });
