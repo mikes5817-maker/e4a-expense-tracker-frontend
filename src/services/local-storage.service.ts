@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const RECEIPTS_DIR = `${FileSystem.documentDirectory}receipts/`;
 
@@ -11,7 +11,8 @@ async function ensureDir() {
 
 export async function saveReceiptLocally(sourceUri: string, fileName: string): Promise<string> {
   await ensureDir();
-  const dest = `${RECEIPTS_DIR}${Date.now()}_${fileName.replace(/[^a-zA-Z0-9._]/g, '_')}`;
+  const safeName = fileName.replace(/[^a-zA-Z0-9._]/g, '_');
+  const dest = `${RECEIPTS_DIR}${Date.now()}_${safeName}`;
   await FileSystem.copyAsync({ from: sourceUri, to: dest });
   return dest;
 }
@@ -20,13 +21,5 @@ export async function getLocalReceiptUri(localPath: string): Promise<string | nu
   try {
     const info = await FileSystem.getInfoAsync(localPath);
     return info.exists ? localPath : null;
-  } catch {
-    return null;
-  }
-}
-
-export async function deleteLocalReceipt(localPath: string): Promise<void> {
-  try {
-    await FileSystem.deleteAsync(localPath, { idempotent: true });
-  } catch {}
+  } catch { return null; }
 }

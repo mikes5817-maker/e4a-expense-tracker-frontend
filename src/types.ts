@@ -1,47 +1,20 @@
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-}
-
-export interface Project {
-  id: string;
-  projectNumber: string;
-  name: string;
-  date: string;
-  expenseCount: number;
-  totalAmount: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export type ExpenseCategory = 'GasolinaDiesel' | 'Hotel' | 'Herramientas' | 'Material' | 'Other';
 
-export const EXPENSE_CATEGORIES: ExpenseCategory[] = ['GasolinaDiesel', 'Hotel', 'Herramientas', 'Material', 'Other'];
+export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
+  'GasolinaDiesel',
+  'Hotel',
+  'Herramientas',
+  'Material',
+  'Other',
+];
 
 export const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
-  GasolinaDiesel: 'Gasolina/Diesel',
+  GasolinaDiesel: 'Gas/Diesel',
   Hotel: 'Hotel',
-  Herramientas: 'Herramientas',
+  Herramientas: 'Tools',
   Material: 'Material',
-  Other: 'Otro',
+  Other: 'Other',
 };
-
-export interface Expense {
-  id: string;
-  projectId: string;
-  employeeName: string;
-  date: string;
-  category: ExpenseCategory;
-  customCategory: string | null;
-  amount: number;
-  receiptFileId: string | null;
-  receiptUrl: string | null;
-  receiptFileName: string | null;
-  receiptContentType: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
 
 export interface ReportPreview {
   projectId: string;

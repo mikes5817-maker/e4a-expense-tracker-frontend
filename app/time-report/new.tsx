@@ -13,6 +13,9 @@ import { colors, spacing, radius } from '../../src/theme';
 import { GradientButton } from '../../src/components/GradientButton';
 import { TimePicker } from '../../src/components/TimePicker';
 import { createTimeReport, downloadTimeReportPdf } from '../../src/services/time-report.service';
+import { getRecentEmployees, saveEmployeeName, getRecentProjectIds, saveProjectId } from '../../src/services/recent-names.service';
+import { AutocompleteInput } from '../../src/components/AutocompleteInput';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -51,6 +54,12 @@ export default function NewTimeReportScreen() {
   const [weekStart] = useState(() => getMondayOf(new Date()));
   const [employees, setEmployees] = useState<Employee[]>([makeEmployee(getMondayOf(new Date()))]);
   const [saving, setSaving] = useState(false);
+  const [empSuggestions, setEmpSuggestions] = useState<string[]>([]);
+  const [projSuggestions, setProjSuggestions] = useState<string[]>([]);
+  React.useEffect(() => {
+    getRecentEmployees().then(setEmpSuggestions);
+    getRecentProjectIds().then(setProjSuggestions);
+  }, []);
 
   const weekLabel = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(weekStart.getTime() + 6 * 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
 
@@ -122,6 +131,8 @@ export default function NewTimeReportScreen() {
         })),
       };
 
+      for (const e of employees) { if (e.name.trim()) await saveEmployeeName(e.name.trim()); }
+      for (const e of employees) { for (const d of e.days) { for (const s of d.shifts) { if (s.projectId) await saveProjectId(s.projectId); } } }
       const report = await createTimeReport(payload);
       const base64Pdf = await downloadTimeReportPdf(report.id);
       const filename = `TimeReport_${weekStart.toISOString().split('T')[0]}.pdf`;
@@ -176,13 +187,12 @@ export default function NewTimeReportScreen() {
 
             <View style={styles.row}>
               <View style={styles.flex}>
-                <Text style={styles.label}>Name *</Text>
-                <TextInput
-                  style={styles.input}
+                <AutocompleteInput
+                  label="Name *"
                   value={emp.name}
                   onChangeText={v => updateEmp(ei, 'name', v)}
+                  suggestions={empSuggestions}
                   placeholder="Full name"
-                  placeholderTextColor={colors.textCaption}
                 />
               </View>
               <View style={[styles.flex, { maxWidth: 110 }]}>

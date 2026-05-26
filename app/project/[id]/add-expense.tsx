@@ -11,6 +11,9 @@ import { GradientButton } from '../../../src/components/GradientButton';
 import { createExpense } from '../../../src/services/expenses.service';
 import { useAuth } from '../../../src/context/AuthContext';
 import { saveReceiptLocally } from '../../../src/services/local-storage.service';
+import { getRecentEmployees, saveEmployeeName } from '../../../src/services/recent-names.service';
+import { AutocompleteInput } from '../../../src/components/AutocompleteInput';
+import * as FileSystem from 'expo-file-system/legacy';
 import { EXPENSE_CATEGORIES, CATEGORY_LABELS, type ExpenseCategory } from '../../../src/types';
 import { DatePickerModal } from 'react-native-paper-dates';
 
@@ -20,6 +23,8 @@ export default function AddExpenseScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [employeeName, setEmployeeName] = useState(user?.name ?? '');
+  const [employeeSuggestions, setEmployeeSuggestions] = React.useState<string[]>([]);
+  React.useEffect(() => { getRecentEmployees().then(setEmployeeSuggestions); }, []);
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [category, setCategory] = useState<ExpenseCategory>('GasolinaDiesel');
@@ -93,6 +98,7 @@ export default function AddExpenseScreen() {
     if (category === 'Other' && !customCategory?.trim()) { setError('Please specify the custom category'); return; }
     setLoading(true);
     try {
+      await saveEmployeeName(employeeName.trim());
       await createExpense(projectId, {
         employeeName: employeeName.trim(),
         date: date.toISOString(),
@@ -123,7 +129,7 @@ export default function AddExpenseScreen() {
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.card}>
             {error ? <Text style={styles.error}>{error}</Text> : null}
-            <InputField label="Employee Name" value={employeeName} onChangeText={setEmployeeName} placeholder="e.g. John Smith" />
+            <AutocompleteInput label="Employee Name" value={employeeName} onChangeText={setEmployeeName} suggestions={employeeSuggestions} placeholder="e.g. John Smith" />
             <Text style={styles.label}>Date</Text>
             <Pressable style={styles.dateBtn} onPress={() => setShowDatePicker(true)}>
               <Ionicons name="calendar-outline" size={18} color={colors.primary} />
