@@ -28,11 +28,24 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
+        name="home"
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="projects"
         options={{
-          title: 'Projects',
-          tabBarIcon: ({ color, size }) => <Ionicons name="folder-outline" size={size} color={color} />,
-          tabBarButtonTestID: 'tab-projects',
+          title: 'Expenses',
+          tabBarIcon: ({ color, size }) => <Ionicons name="receipt-outline" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="time-reports"
+        options={{
+          title: 'Time',
+          tabBarIcon: ({ color, size }) => <Ionicons name="time-outline" size={size} color={color} />,
         }}
       />
     </Tabs>
