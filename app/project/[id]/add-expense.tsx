@@ -168,8 +168,11 @@ export default function AddExpenseScreen() {
                   </View>
                 )}
                 <View style={styles.fileInfo}>
-                  <Ionicons name="checkmark-circle" size={16} color="#16A34A" />
-                  <Text style={styles.fileInfoText}>Saved to device</Text>
+                  <Ionicons name="checkmark-circle" size={20} color="#16A34A" />
+                  <View>
+                    <Text style={styles.fileInfoTitle}>Receipt saved successfully</Text>
+                    <Text style={styles.fileInfoSub}>{fileName}</Text>
+                  </View>
                 </View>
                 <Pressable onPress={removeFile} style={styles.removeBtn}>
                   <Ionicons name="close-circle" size={24} color={colors.error} />
@@ -231,8 +234,9 @@ const styles = StyleSheet.create({
   previewImage: { width: '100%', height: 200, borderRadius: radius.md },
   pdfPreview: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: spacing.md },
   pdfName: { flex: 1, fontSize: 14, color: colors.textDark },
-  fileInfo: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 8, backgroundColor: '#F0FDF4' },
-  fileInfoText: { fontSize: 12, color: '#16A34A' },
+  fileInfo: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, backgroundColor: '#F0FDF4', borderTopWidth: 1, borderTopColor: '#BBF7D0' },
+  fileInfoTitle: { fontSize: 13, fontWeight: '600', color: '#15803D' },
+  fileInfoSub: { fontSize: 11, color: '#16A34A', marginTop: 1 },
   removeBtn: { position: 'absolute', top: 8, right: 8 },
   uploadingContainer: { alignItems: 'center', padding: spacing.md },
   uploadingText: { fontSize: 13, color: colors.textBody, marginTop: 8 },
