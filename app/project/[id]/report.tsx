@@ -56,6 +56,7 @@ export default function ReportScreen() {
       const isMailAvailable = await MailComposer.isAvailableAsync();
       if (isMailAvailable) {
         await MailComposer.composeAsync({
+          to: ['asantoro@e4asolutions.com'],
           subject: `E4A Solutions - Expense Report: ${report?.projectName ?? ''}`,
           body: `Please find attached the expense report for project: ${report?.projectName ?? ''}.\n\nProject Number: ${report?.projectNumber ?? ''}\nTotal Amount: ${formatCurrency(report?.totalAmount ?? 0)}\n\nE4A Solutions`,
           attachments: [fileUri],
@@ -153,7 +154,7 @@ export default function ReportScreen() {
             </View>
             <View style={styles.recipientRow}>
               <Ionicons name="mail-outline" size={16} color={colors.textCaption} />
-              <Text style={styles.recipientText}>Se abrirá tu app de email con el PDF adjunto</Text>
+              <Text style={styles.recipientText}>Se abrirá tu email listo para enviar a asantoro@e4asolutions.com</Text>
             </View>
             {error ? <Text style={styles.error}>{error}</Text> : null}
             <GradientButton
