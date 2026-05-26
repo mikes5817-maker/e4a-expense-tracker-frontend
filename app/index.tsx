@@ -6,6 +6,6 @@ import { LoadingSplash } from '../src/components/LoadingSplash';
 export default function Index() {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return <LoadingSplash />;
-  if (isAuthenticated) return <Redirect href="/tabs/projects" />;
+  if (isAuthenticated) return <Redirect href="/tabs/home" />;
   return <Redirect href="/auth/login" />;
 }

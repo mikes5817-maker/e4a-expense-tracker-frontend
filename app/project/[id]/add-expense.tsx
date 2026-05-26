@@ -9,6 +9,7 @@ import { colors, spacing, radius } from '../../../src/theme';
 import { InputField } from '../../../src/components/InputField';
 import { GradientButton } from '../../../src/components/GradientButton';
 import { createExpense } from '../../../src/services/expenses.service';
+import { useAuth } from '../../../src/context/AuthContext';
 import { saveReceiptLocally } from '../../../src/services/local-storage.service';
 import { EXPENSE_CATEGORIES, CATEGORY_LABELS, type ExpenseCategory } from '../../../src/types';
 import { DatePickerModal } from 'react-native-paper-dates';
@@ -17,7 +18,8 @@ export default function AddExpenseScreen() {
   const { id: projectId = '' } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [employeeName, setEmployeeName] = useState('');
+  const { user } = useAuth();
+  const [employeeName, setEmployeeName] = useState(user?.name ?? '');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [category, setCategory] = useState<ExpenseCategory>('GasolinaDiesel');
