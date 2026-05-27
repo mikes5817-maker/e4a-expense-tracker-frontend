@@ -14,6 +14,7 @@ import { GradientButton } from '../../src/components/GradientButton';
 import { TimePicker } from '../../src/components/TimePicker';
 import { createTimeReport, downloadTimeReportPdf } from '../../src/services/time-report.service';
 import { getRecentEmployees, saveEmployeeName, getRecentProjectIds, saveProjectId } from '../../src/services/recent-names.service';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AutocompleteInput } from '../../src/components/AutocompleteInput';
 import * as FileSystem from 'expo-file-system/legacy';
 
@@ -54,6 +55,27 @@ export default function NewTimeReportScreen() {
   const [weekStart] = useState(() => getMondayOf(new Date()));
   const [employees, setEmployees] = useState<Employee[]>([makeEmployee(getMondayOf(new Date()))]);
   const [saving, setSaving] = useState(false);
+  const DRAFT_KEY = 'time_report_draft';
+
+  // Load draft on mount
+  React.useEffect(() => {
+    AsyncStorage.getItem(DRAFT_KEY).then(raw => {
+      if (raw) {
+        try {
+          const draft = JSON.parse(raw);
+          if (draft.employees) setEmployees(draft.employees.map((e: any) => ({
+            ...e,
+            days: e.days.map((d: any) => ({ ...d, date: new Date(d.date) }))
+          })));
+        } catch {}
+      }
+    });
+  }, []);
+
+  // Auto-save draft when employees change
+  React.useEffect(() => {
+    AsyncStorage.setItem(DRAFT_KEY, JSON.stringify({ employees }));
+  }, [employees]);
   const [empSuggestions, setEmpSuggestions] = useState<string[]>([]);
   const [projSuggestions, setProjSuggestions] = useState<string[]>([]);
   React.useEffect(() => {
@@ -134,6 +156,7 @@ export default function NewTimeReportScreen() {
       for (const e of employees) { if (e.name.trim()) await saveEmployeeName(e.name.trim()); }
       for (const e of employees) { for (const d of e.days) { for (const s of d.shifts) { if (s.projectId) await saveProjectId(s.projectId); } } }
       const report = await createTimeReport(payload);
+      await AsyncStorage.removeItem(DRAFT_KEY);
       const base64Pdf = await downloadTimeReportPdf(report.id);
       const filename = `TimeReport_${weekStart.toISOString().split('T')[0]}.pdf`;
       const fileUri = `${FileSystem.cacheDirectory}${filename}`;
